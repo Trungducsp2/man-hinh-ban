@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0e1118">
+<title>Màn Hình Bàn Làm Việc</title>
+<style>
+/* Một cột dọc cho điện thoại để thẳng đứng: đồng hồ, Claude, thời tiết, hôm nay, ngày mai, việc cần làm.
+   Điện thoại nằm ngang thì chia hai cột. Giao diện tối cố định, hợp để màn hình sáng cả ngày. */
+:root{
+  --bg:#0e1118;--panel:#161a24;--line:#262b38;--fg:#e7e9ef;--muted:#8e95a8;
+  --accent:#f0a04b;--accent-soft:#2b2216;--good:#5cc483;--warn:#e3bb3e;--bad:#ef6b5b;--vbad:#b98ad0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:Roboto,"Segoe UI",system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.4;
+  padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));-webkit-text-size-adjust:100%}
+.wrap{display:grid;grid-template-columns:1fr;gap:10px;max-width:1100px;margin:0 auto}
+@media (orientation:landscape) and (min-width:560px){
+  .wrap{grid-template-columns:1fr 1fr;align-items:start}
+  .clock,.claude{grid-column:1/-1}
+}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.clock{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px}
+.time{font-size:clamp(60px,21vw,110px);font-weight:700;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.date{font-size:16px;font-weight:500}
+.dshort{display:none}
+.sub{color:var(--muted);font-size:12.5px}
+h2{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+h2 .stamp{letter-spacing:0;text-transform:none;font-weight:400}
+.claude{border-color:var(--accent);background:var(--accent-soft)}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.mrow b{font-size:24px;font-variant-numeric:tabular-nums}
+.big .mrow span{font-size:17px}.big .mrow b{font-size:42px;line-height:1}
+.bar{height:9px;border-radius:5px;background:var(--line);overflow:hidden;margin:4px 0}
+.big .bar{height:16px;border-radius:8px}
+.bar i{display:block;height:100%;width:0;background:var(--good);border-radius:inherit}
+.m2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+.wx{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.temp{font-size:52px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.wxd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.wxd div{border-top:1px solid var(--line);padding-top:6px;font-variant-numeric:tabular-nums}
+.aqi{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px;color:#0e1118}
+ul{list-style:none;margin:0;padding:0}
+li.row{display:grid;grid-template-columns:62px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);min-width:0}
+li.row:last-child{border-bottom:0}
+.t{white-space:nowrap;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent)}
+.ev{min-width:0;overflow-wrap:anywhere}
+.where{color:var(--muted);font-size:12.5px}
+li.past{opacity:.45}
+li.now .t{color:var(--good)}
+.tasks li.row{grid-template-columns:20px 1fr}
+.dot{width:13px;height:13px;border:2px solid var(--accent);border-radius:50%;margin-top:4px}
+.due{color:var(--muted);font-size:12.5px}.due.late{color:var(--bad);font-weight:700}
+.empty,.more{color:var(--muted);padding:4px 0;font-size:13.5px}
+/* Chế độ gọn: bật tự động khi nội dung dài hơn màn hình */
+body.c1 .wrap,body.c2 .wrap{gap:7px}
+body.c1 .panel,body.c2 .panel{padding:8px 10px}
+body.c1 .time,body.c2 .time{font-size:clamp(44px,15vw,72px)}
+body.c1 h2,body.c2 h2{margin-bottom:4px}
+body.c1 .big b,body.c2 .big b{font-size:32px}
+body.c1 .mrow b,body.c2 .mrow b{font-size:20px}
+body.c1 .temp,body.c2 .temp{font-size:40px}
+body.c1 .wxd,body.c2 .wxd{display:none}
+body.c1 .m2,body.c2 .m2{margin-top:6px}
+body.c1 .clock,body.c2 .clock{flex-wrap:nowrap;align-items:center}
+body.c1 .clock>div:first-child,body.c2 .clock>div:first-child{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+body.c1 .date,body.c2 .date{font-size:14px}
+body.c1 #city,body.c2 #city{display:none}
+body.c1 #wx,body.c2 #wx{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+body.c1 .aqi,body.c2 .aqi{margin-top:0}
+body.c2 .aqi .sub{display:none}
+body.c1 .dfull,body.c2 .dfull{display:none}
+body.c1 .dshort,body.c2 .dshort{display:inline}
+body.c1 .clock .time,body.c2 .clock .time{font-size:clamp(44px,13vw,60px)}
+body.c2 .more{padding:0;font-size:12px}
+body.c1,body.c2{padding-top:8px;padding-bottom:6px}
+body.c3 .foot{display:none}
+body.c3 .wrap{gap:5px}
+body.c3 .panel{padding:6px 10px}
+body.c3 .big b{font-size:28px}
+body.c3 .big .bar,body.c3 .bar{height:8px}
+body.c2 .wx .sub{display:none}
+body.c2 .where,body.c2 .due:not(.late),body.c2 .big .sub,body.c2 .m2 .sub{display:none}
+body.c2 .mrow span{font-size:14px}
+body.c2 li.row{padding:3px 0}
+body.c2 .t{font-size:15px}
+body.c2 .big .bar{height:12px}
+.foot{grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px}
+.foot.warn{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="panel clock">
+    <div><div class="time" id="time">--:--</div><div class="date"><span class="dfull" id="date">&nbsp;</span><span class="dshort" id="dshort"></span></div></div>
+    <div class="sub" id="city"></div>
+  </section>
+
+  <section class="panel claude">
+    <h2>Mức dùng Claude <span class="stamp" id="use-stamp"></span></h2>
+    <div class="big"><div class="mrow"><span>Tuần</span><b id="v-week">—</b></div><div class="bar"><i id="b-week"></i></div><div class="sub" id="r-week"></div></div>
+    <div class="m2">
+      <div><div class="mrow"><span>Phiên 5 giờ</span><b id="v-day">—</b></div><div class="bar"><i id="b-day"></i></div><div class="sub" id="r-day"></div></div>
+      <div><div class="mrow"><span>Fable</span><b id="v-fable">—</b></div><div class="bar"><i id="b-fable"></i></div><div class="sub" id="r-fable"></div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Thời tiết <span class="stamp" id="wx-stamp"></span></h2>
+    <div id="wx"><div class="empty">Đang tải thời tiết…</div></div>
+  </section>
+
+  <section class="panel"><h2>Hôm nay</h2><ul id="today"></ul></section>
+  <section class="panel"><h2>Ngày mai</h2><ul id="tomorrow"></ul></section>
+  <section class="panel"><h2>Việc cần làm</h2><ul class="tasks" id="tasks"></ul></section>
+
+  <div class="foot" id="foot">Tự làm mới mỗi 5 phút</div>
+</div>
+
+<script>
+(function(){
+  /* ===== Cấu hình: sửa ở đây ===== */
+  var CITY="Hà Nội", LAT=21.0285, LON=105.8542;   // toạ độ lấy từ Google Maps
+  var REFRESH_MS=5*60*1000;                        // làm mới 5 phút/lần
+  var LIM={ev:5,tk:6};   // số dòng tối đa; trang tự giảm nếu không vừa màn hình
+  var LEVELS=[{ev:5,tk:6,c:""},{ev:4,tk:5,c:"c1"},{ev:3,tk:4,c:"c1"},{ev:3,tk:3,c:"c2"},{ev:2,tk:3,c:"c2"},{ev:2,tk:2,c:"c2 c3"},{ev:1,tk:2,c:"c2 c3"}];
+  var DATA=null;
+  /* =============================== */
+
+  var DAYS=["Chủ nhật","Thứ hai","Thứ ba","Thứ tư","Thứ năm","Thứ sáu","Thứ bảy"];
+  function $(id){return document.getElementById(id)}
+  function pad(n){return (n<10?"0":"")+n}
+  function hm(d){return pad(d.getHours())+":"+pad(d.getMinutes())}
+  function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function note(el,t){el.innerHTML='<li class="empty">'+esc(t)+'</li>'}
+
+  $("city").textContent=CITY;
+  function tick(){
+    var d=new Date();
+    $("time").textContent=hm(d);
+    $("date").textContent=DAYS[d.getDay()]+", "+d.getDate()+" tháng "+(d.getMonth()+1)+" năm "+d.getFullYear();
+    $("dshort").textContent=DAYS[d.getDay()]+" "+d.getDate()+"/"+(d.getMonth()+1);
+  }
+  tick(); setInterval(tick,10000);
+
+  /* --- Lịch --- */
+  function dayOf(ev,key){
+    if(ev.allDay) return ev.startDate<=key && key<ev.endDate;
+    return ymd(new Date(ev.start))===key;
+  }
+  function renderDay(el,events,key,isToday){
+    var list=events.filter(function(e){return dayOf(e,key)});
+    if(isToday){var n0=new Date(); var up=list.filter(function(e){return e.allDay||new Date(e.end)>=n0}); if(up.length||list.length) list=up;}
+    list.sort(function(a,b){
+      if(a.allDay!==b.allDay) return a.allDay?-1:1;
+      return a.allDay?0:new Date(a.start)-new Date(b.start);
+    });
+    if(!list.length){note(el,"Không có sự kiện");return}
+    var now=new Date(), html="";
+    list.slice(0,LIM.ev).forEach(function(e){
+      var cls="row", time="Cả ngày";
+      if(!e.allDay){
+        var s=new Date(e.start), en=new Date(e.end);
+        time=hm(s);
+        if(isToday){ if(en<now) cls+=" past"; else if(s<=now) cls+=" now"; }
+      }
+      html+='<li class="'+cls+'"><span class="t">'+time+'</span><span class="ev">'+esc(e.title)+
+        (e.location?'<div class="where">'+esc(e.location)+'</div>':'')+'</span></li>';
+    });
+    if(list.length>LIM.ev) html+='<li class="more">+'+(list.length-LIM.ev)+' sự kiện nữa</li>';
+    el.innerHTML=html;
+  }
+
+  /* --- Việc cần làm --- */
+  function renderTasks(tasks){
+    var el=$("tasks");
+    if(!tasks.length){note(el,"Không có việc nào cần làm");return}
+    var today=ymd(new Date());
+    tasks=tasks.slice().sort(function(a,b){
+      if(a.due&&b.due) return a.due<b.due?-1:a.due>b.due?1:0;
+      return a.due?-1:b.due?1:0;
+    });
+    var html="";
+    tasks.slice(0,LIM.tk).forEach(function(t){
+      var late=t.due&&t.due<today;
+      html+='<li class="row"><span class="dot"></span><span class="ev">'+esc(t.title)+
+        (t.due?'<div class="due'+(late?' late':'')+'">'+(late?'Quá hạn ':'Hạn ')+esc(t.due.split("-").reverse().join("/"))+'</div>':'')+'</span></li>';
+    });
+    if(tasks.length>LIM.tk) html+='<li class="more">+'+(tasks.length-LIM.tk)+' việc nữa</li>';
+    el.innerHTML=html;
+  }
+
+  /* --- Mức dùng Claude --- */
+  function meter(k,v,reset){
+    var has=typeof v==="number";
+    $("v-"+k).textContent=has?Math.round(v)+"%":"—";
+    var b=$("b-"+k);
+    b.style.width=has?Math.max(0,Math.min(100,v))+"%":"0";
+    b.style.background=!has?"var(--line)":v>=90?"var(--bad)":v>=70?"var(--warn)":"var(--good)";
+    $("r-"+k).textContent=reset?"Đặt lại: "+reset:"";
+  }
+  function renderClaude(c){
+    c=c||{};
+    meter("week",c.week,c.weekReset); meter("day",c.day,c.dayReset); meter("fable",c.fable,c.fableReset);
+    var s=$("use-stamp");
+    if(!c.updatedAt){s.textContent="chưa có số liệu";return}
+    var d=new Date(c.updatedAt), old=(Date.now()-d.getTime())>3*3600*1000;
+    s.textContent=(old?"số cũ, ":"")+"cập nhật "+hm(d);
+  }
+
+  /* --- Thời tiết + không khí (gọi thẳng Open-Meteo, không cần khoá) --- */
+  var WX={0:"Trời quang",1:"Ít mây",2:"Có mây",3:"U ám",45:"Sương mù",48:"Sương mù",51:"Mưa phùn",53:"Mưa phùn",55:"Mưa phùn",
+    61:"Mưa nhỏ",63:"Mưa",65:"Mưa to",80:"Mưa rào",81:"Mưa rào",82:"Mưa rào to",95:"Dông",96:"Dông",99:"Dông"};
+  function aqiBand(v){
+    if(v<=50)return["Tốt","var(--good)"]; if(v<=100)return["Trung bình","var(--warn)"];
+    if(v<=150)return["Kém cho người nhạy cảm","var(--bad)"]; if(v<=200)return["Kém","var(--bad)"];
+    return["Rất kém","var(--vbad)"];
+  }
+  function getJSON(url){
+    return fetch(url,{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()});
+  }
+  function loadWeather(){
+    var f="https://api.open-meteo.com/v1/forecast?latitude="+LAT+"&longitude="+LON+
+      "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=2";
+    var a="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+LAT+"&longitude="+LON+"&current=us_aqi,pm2_5&timezone=auto";
+    return Promise.all([getJSON(f),getJSON(a).catch(function(){return null})]).then(function(r){
+      var w=r[0], q=r[1], c=w.current, d=w.daily, h="";
+      h+='<div class="wx"><div class="temp">'+Math.round(c.temperature_2m)+'°</div><div><div style="font-weight:700">'+
+        esc(WX[c.weather_code]||"")+'</div><div class="sub">Khả năng mưa '+d.precipitation_probability_max[0]+'%</div></div></div><div class="wxd">';
+      [0,1].forEach(function(i){
+        h+='<div><div class="sub">'+(i?"Ngày mai":"Hôm nay")+'</div><b>'+Math.round(d.temperature_2m_max[i])+'°</b> / '+
+          Math.round(d.temperature_2m_min[i])+'° · mưa '+d.precipitation_probability_max[i]+'%</div>';
+      });
+      h+='</div>';
+      if(q&&q.current&&typeof q.current.us_aqi==="number"){
+        var b=aqiBand(q.current.us_aqi);
+        h+='<div class="aqi"><span class="sub lbl">Không khí (US AQI)</span><span class="pill" style="background:'+b[1]+'">AQI '+q.current.us_aqi+' · '+b[0]+'</span>'+
+          '<span class="sub">PM2.5 '+q.current.pm2_5+' µg/m³</span></div>';
+      }
+      $("wx").innerHTML=h; $("wx-stamp").textContent="cập nhật "+hm(new Date()); fit();
+    }).catch(function(){
+      $("wx-stamp").textContent="chưa cập nhật được";
+      if(!$("wx").querySelector(".temp")) $("wx").innerHTML='<div class="empty">Chưa tải được thời tiết. Kiểm tra mạng.</div>';
+    });
+  }
+
+  /* --- Vẽ lại danh sách và rút gọn dần cho đến khi vừa một màn hình, không cần cuộn --- */
+  function paint(){
+    if(!DATA) return;
+    var now=new Date(), t0=ymd(now), t1=ymd(new Date(now.getTime()+86400000)), ev=DATA.events||[];
+    renderDay($("today"),ev,t0,true); renderDay($("tomorrow"),ev,t1,false);
+    renderTasks(DATA.tasks||[]); renderClaude(DATA.claude);
+  }
+  function fit(){
+    for(var i=0;i<LEVELS.length;i++){
+      LIM.ev=LEVELS[i].ev; LIM.tk=LEVELS[i].tk; document.body.className=LEVELS[i].c;
+      paint();
+      if(document.documentElement.scrollHeight<=window.innerHeight+1) break;
+    }
+  }
+  window.addEventListener("resize",fit);
+
+  /* --- Dữ liệu Google (data.json do GitHub Actions cập nhật) --- */
+  function loadData(){
+    return getJSON("data.json?t="+Date.now()).then(function(d){
+      var now=new Date();
+      DATA=d; fit();
+      var age=d.generated?(Date.now()-new Date(d.generated).getTime())/60000:0, f=$("foot");
+      if(age>45){f.className="foot warn";f.textContent="Dữ liệu lịch đã cũ ("+Math.round(age/60)+" giờ). Kiểm tra GitHub Actions."}
+      else{f.className="foot";f.textContent="Lịch cập nhật "+hm(new Date(d.generated||now))+" · tự làm mới mỗi 5 phút"}
+    }).catch(function(){
+      var f=$("foot"); f.className="foot warn"; f.textContent="Chưa tải được dữ liệu lịch. Sẽ thử lại sau 5 phút.";
+      if(!$("today").children.length){note($("today"),"Chưa có dữ liệu");note($("tomorrow"),"Chưa có dữ liệu");note($("tasks"),"Chưa có dữ liệu")}
+    });
+  }
+
+  function refresh(){loadData();loadWeather()}
+  refresh(); setInterval(refresh,REFRESH_MS);
+
+  /* Giữ màn hình sáng khi trang đang mở (nếu trình duyệt cho phép) */
+  function wake(){try{if(navigator.wakeLock&&document.visibilityState==="visible")navigator.wakeLock.request("screen").catch(function(){})}catch(e){}}
+  wake(); document.addEventListener("visibilitychange",function(){wake(); if(document.visibilityState==="visible")refresh()});
+})();
+</script>
+</body>
+</html>
