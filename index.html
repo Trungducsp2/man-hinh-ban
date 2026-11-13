@@ -277,8 +277,17 @@ body.c2 .big .bar{height:12px}
   window.addEventListener("resize",fit);
 
   /* --- Dữ liệu Google (data.json do GitHub Actions cập nhật) --- */
+  /* Lấy lịch trực tiếp từ Apps Script nếu link có #t=<token> (không phụ thuộc lịch chạy của GitHub);
+     không có token hoặc lỗi thì dùng data.json do GitHub Actions cập nhật. */
+  var API="https://script.google.com/macros/s/AKfycby5mIUHDCNSUhBbaH-I6GysVpl1Ssve33v4YpwnqrCUMcHC0Ozt50PmzSQA2JnA-Oht/exec";
+  var TOK="";
+  try{var m=/[#&]t=([^&]+)/.exec(location.hash); if(m){TOK=decodeURIComponent(m[1]); localStorage.setItem("tok",TOK)} else TOK=localStorage.getItem("tok")||""}catch(e){}
+  function fetchData(){
+    var p=TOK?getJSON(API+"?token="+encodeURIComponent(TOK)).then(function(d){if(!d||!d.events)throw new Error("bad");return d}):Promise.reject(new Error("no token"));
+    return p.catch(function(){return getJSON("data.json?t="+Date.now())});
+  }
   function loadData(){
-    return getJSON("data.json?t="+Date.now()).then(function(d){
+    return fetchData().then(function(d){
       var now=new Date();
       DATA=d; fit();
       var age=d.generated?(Date.now()-new Date(d.generated).getTime())/60000:0, f=$("foot");
