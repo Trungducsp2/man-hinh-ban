@@ -3,13 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0e1118">
+<meta name="theme-color" content="#f3f0e8">
 <title>Màn Hình Bàn Làm Việc</title>
 <style>
 /* Một cột dọc cho điện thoại để thẳng đứng: đồng hồ, Claude, thời tiết, hôm nay, ngày mai, việc cần làm.
-   Điện thoại nằm ngang thì chia hai cột. Giao diện tối cố định, hợp để màn hình sáng cả ngày. */
+   Điện thoại nằm ngang thì chia hai cột. Giao diện sáng kiểu giấy Kindle; thêm ?dark vào link để dùng nền tối. */
 :root{
+  --bg:#f3f0e8;--panel:#fbf9f4;--line:#c9c4b8;--fg:#111111;--muted:#4d4a43;
+  --accent:#111111;--accent-soft:#fbf9f4;--good:#1f6b3f;--warn:#8a5a00;--bad:#b3261e;--vbad:#6d3590;
+  color-scheme:light;
+}
+:root.dark{
   --bg:#0e1118;--panel:#161a24;--line:#262b38;--fg:#e7e9ef;--muted:#8e95a8;
   --accent:#f0a04b;--accent-soft:#2b2216;--good:#5cc483;--warn:#e3bb3e;--bad:#ef6b5b;--vbad:#b98ad0;
   color-scheme:dark;
@@ -23,19 +30,19 @@ body{font-family:Roboto,"Segoe UI",system-ui,-apple-system,sans-serif;font-size:
   .wrap{grid-template-columns:1fr 1fr;align-items:start}
   .clock,.claude{grid-column:1/-1}
 }
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.panel{background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:12px;min-width:0}
 .clock{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px}
 .time{font-size:clamp(60px,21vw,110px);font-weight:700;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .date{font-size:16px;font-weight:500}
 .dshort{display:none}
 .sub{color:var(--muted);font-size:12.5px}
-h2{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+h2{margin:0 0 8px;font-size:12.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
 h2 .stamp{letter-spacing:0;text-transform:none;font-weight:400}
-.claude{border-color:var(--accent);background:var(--accent-soft)}
+.claude{border:2px solid var(--accent);background:var(--accent-soft)}
 .mrow{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
 .mrow b{font-size:24px;font-variant-numeric:tabular-nums}
 .big .mrow span{font-size:17px}.big .mrow b{font-size:42px;line-height:1}
-.bar{height:9px;border-radius:5px;background:var(--line);overflow:hidden;margin:4px 0}
+.bar{height:9px;border-radius:5px;background:#dedad0;overflow:hidden;margin:4px 0}
 .big .bar{height:16px;border-radius:8px}
 .bar i{display:block;height:100%;width:0;background:var(--good);border-radius:inherit}
 .m2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
@@ -44,7 +51,9 @@ h2 .stamp{letter-spacing:0;text-transform:none;font-weight:400}
 .wxd{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .wxd div{border-top:1px solid var(--line);padding-top:6px;font-variant-numeric:tabular-nums}
 .aqi{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px;color:#0e1118}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px;color:#fff}
+:root.dark .pill{color:#0e1118}
+:root.dark .bar{background:var(--line)}
 ul{list-style:none;margin:0;padding:0}
 li.row{display:grid;grid-template-columns:62px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);min-width:0}
 li.row:last-child{border-bottom:0}
@@ -124,6 +133,7 @@ body.c2 .big .bar{height:12px}
 
 <script>
 (function(){
+  if(/[?&]dark/.test(location.search)) document.documentElement.className="dark";
   /* ===== Cấu hình: sửa ở đây ===== */
   var CITY="Hà Nội", LAT=21.0285, LON=105.8542;   // toạ độ lấy từ Google Maps
   var REFRESH_MS=5*60*1000;                        // làm mới 5 phút/lần
@@ -285,6 +295,11 @@ body.c2 .big .bar{height:12px}
 
   /* Giữ màn hình sáng khi trang đang mở (nếu trình duyệt cho phép) */
   function wake(){try{if(navigator.wakeLock&&document.visibilityState==="visible")navigator.wakeLock.request("screen").catch(function(){})}catch(e){}}
+  /* Chạm vào trang để vào toàn màn hình (ẩn thanh địa chỉ). Trình duyệt chỉ cho phép sau một cú chạm. */
+  document.addEventListener("click",function(){
+    var e=document.documentElement,f=e.requestFullscreen||e.webkitRequestFullscreen;
+    if(f&&!(document.fullscreenElement||document.webkitFullscreenElement)){try{var r=f.call(e);if(r&&r.catch)r.catch(function(){})}catch(x){}}
+  });
   wake(); document.addEventListener("visibilitychange",function(){wake(); if(document.visibilityState==="visible")refresh()});
 })();
 </script>
