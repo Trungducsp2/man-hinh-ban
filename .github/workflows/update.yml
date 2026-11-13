@@ -1,0 +1,50 @@
+name: Cập nhật màn hình điện thoại
+
+on:
+  schedule:
+    # GitHub chạy tối thiểu 5 phút/lần và thường trễ vài phút. Giờ trong cron là UTC.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lấy dữ liệu từ Apps Script
+        env:
+          DATA_URL: ${{ secrets.DATA_URL }}
+          SECRET_PATH: ${{ secrets.SECRET_PATH }}
+        run: |
+          set -euo pipefail
+          D="_site/${SECRET_PATH:?thiếu SECRET_PATH}"
+          mkdir -p "$D"
+          curl -fsSL --retry 3 --retry-delay 5 -m 60 -o "$D/data.json" "${DATA_URL:?thiếu DATA_URL}"
+          python3 - "$D/data.json" <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          if "events" not in d or "tasks" not in d:
+              sys.exit("Apps Script báo lỗi, kiểm tra lại DATA_URL và token.")
+          PY
+          cp index.html "$D/index.html"
+          touch _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4
